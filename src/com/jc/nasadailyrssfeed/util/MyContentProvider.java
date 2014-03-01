@@ -3,16 +3,12 @@ package com.jc.nasadailyrssfeed.util;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
 import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteDatabase.CursorFactory;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.os.Environment;
@@ -25,9 +21,10 @@ public class MyContentProvider extends ContentProvider{
 	//Log tag
 	private static final String TAG="my provider"; 
 	
-	//Publish Content Uri   ??????? 
+	//Publish Content Uri   ??????? 最后的elements 是什么
 	public static final Uri CONTENT_URI=Uri.
-				parse("content://com.jc.provider.nasadailyrssfeed/elements");
+				parse("content://com.jc.provider.nasadailyrssfeed/"
+	                     +NasaDailyOpenHelper.TABLE_NAME_1);
 	
 	// Create the constants used to differentiate between
 	// the different URI requests.
@@ -42,9 +39,9 @@ public class MyContentProvider extends ContentProvider{
 	static {
 		uriMatcher=new UriMatcher(UriMatcher.NO_MATCH);
 		uriMatcher.addURI("com.jc.provider.nasadailyrssfeed",
-				"elements", ALLROWS);
+				NasaDailyOpenHelper.TABLE_NAME_1, ALLROWS);
 		uriMatcher.addURI("com.jc.provider.nasadailyrssfeed",
-				"elements/#", SINGLE_ROW);
+				NasaDailyOpenHelper.TABLE_NAME_1+"/#", SINGLE_ROW);
 	}
 	
 	//SQLite open helper variable
@@ -143,9 +140,11 @@ public class MyContentProvider extends ContentProvider{
 		// for a Content Provider URI
 		switch(uriMatcher.match(uri)){
 		    case ALLROWS:
-		    	return "vnd.android.cursor.dir/vnd.jc.elemental";
+		    	return "vnd.android.cursor.dir/vnd.com.jc.provider.nasadailyrssfeed."
+		    			+NasaDailyOpenHelper.TABLE_NAME_1;
 		    case SINGLE_ROW:
-		    	return "vnd.android.cursor.item/vnd.jc.elemental";
+		    	return "vnd.android.cursor.item/vnd.com.jc.provider.nasadailyrssfeed."
+		    			+NasaDailyOpenHelper.TABLE_NAME_1;
 		    default:
 		    	throw new IllegalArgumentException("Unsupported URI: "+uri);
 		}
@@ -240,57 +239,5 @@ public class MyContentProvider extends ContentProvider{
 		return ParcelFileDescriptor.open(file, fileMode);
 	}
     
-	private static class NasaDailyOpenHelper extends SQLiteOpenHelper{
-        
-		public static final int DATABASE_VERSION=1;
-		public static final String DATABASE_NAME="NASARSSFeed";
-		public static final String TABLE_NAME_1="Nasa_daily_Image";
-		
-		public static final String KEYWORD="_id";
-		public static final String DATE="date";
-		public static final String TITLE="title";
-		public static final String IMAGE="_data";
-		public static final String DESCRIPTION="description";
-		
-		private static final String TABLE_CREATE_1="create table "+TABLE_NAME_1
-				+"( "+KEYWORD+" integer primary_key autoincrement, "
-				     +TITLE+" varchar(255) not null, "
-				     +DATE +" datatime not null, "
-				     +IMAGE+" string, "
-				     +DESCRIPTION+" text not null) ";
-		
-		public NasaDailyOpenHelper(Context context, String name,
-				CursorFactory factory, int version) {
-			super(context, name, factory, version);
-			// TODO Auto-generated constructor stub
-		}
-        
-		//called when no database exits in disk and 
-		//the helper class need to create a new one.
-		@Override
-		public void onCreate(SQLiteDatabase db) {
-			// TODO Auto-generated method stub
-			db.execSQL(TABLE_CREATE_1);
-			Log.w(TAG, "create db sucessful");
-		}
-        
-		// Called when there is a database version mismatch meaning that
-		// the version of the database on disk needs to be upgraded to
-		// the current version.
-		@Override
-		public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-			// TODO Auto-generated method stub
-			Log.w(TAG, "Upgrading from version "+oldVersion+" to "+newVersion
-					+" ,which will destroy all old data");
-			
-			// Upgrade the existing database to conform to the new
-			// version. Multiple previous versions can be handled by
-			// comparing oldVersion and newVersion values.
-			// The simplest case is to drop the old table and create a new one.
-			db.execSQL("drop table if it exists "+TABLE_NAME_1);
-			// Create a new one.
-			onCreate(db);
-		}
-		
-	}
+	
 }

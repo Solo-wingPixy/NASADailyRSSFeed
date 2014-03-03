@@ -23,7 +23,7 @@ import android.util.Log;
 	public static final String IS_READ="is_read";
 	
 	private static final String TABLE_CREATE_1="create table "+TABLE_NAME_1
-			+"( "+KEYWORD+" integer primary_key autoincrement, "
+			+"( "+KEYWORD+" integer primary key autoincrement, "
 			     +TITLE+" varchar(255) not null, "
 			     +DATE +" datatime not null, "
 			     +IMAGE+" string, "

@@ -1,10 +1,10 @@
 package com.jc.nasadailyrssfeed;
 
-import java.util.ArrayList;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import com.jc.nasadailyrssfeed.util.MyContentProvider;
-import com.jc.nasadailyrssfeed.util.NasaDailyDAO;
-import com.jc.nasadailyrssfeed.util.NasaDailyImage;
 import com.jc.nasadailyrssfeed.util.NasaDailyOpenHelper;
 
 import android.net.Uri;
@@ -14,41 +14,30 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.DataSetObserver;
-import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.widget.SimpleCursorAdapter;
+import android.util.Log;
 import android.view.Menu;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.ListAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
 
 public class MainActivity extends FragmentActivity {
 
 	// Log tag
 	private static final String TAG = "my provider";
-
-	private int key_code;
-	private String title;
-	private String date;
-	private String image;
-	private String description;
-
-	private int num;
-	private ArrayList<NasaDailyImage> nasaArrayList;
-
+	
+	/*private DailyImageAdapter dailyImageAdapter=new DailyImageAdapter();*/
+	private SimpleCursorAdapter scadapter=null;
+			
 	public static final String fileDir = Environment.DIRECTORY_PICTURES;
 
 	// Querying for Content Asynchronously Using the Cursor Loader
 	private LoaderManager.LoaderCallbacks<Cursor> myLoaderCallBacks = new LoaderManager.LoaderCallbacks<Cursor>() {
-
+         
 		@Override
 		public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 			// Construct the new query in the form of a Cursor Loader. Use the
@@ -73,13 +62,31 @@ public class MainActivity extends FragmentActivity {
 
 		@Override
 		public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+			
+			String[] from={NasaDailyOpenHelper.TITLE,
+					       NasaDailyOpenHelper.DATE,
+					       NasaDailyOpenHelper.IMAGE,
+					       NasaDailyOpenHelper.DESCRIPTION};
+			
+			int[] to={R.id.daily_title,
+					  R.id.daily_date,
+					  R.id.daily_image,
+					  R.id.daily_description};
+			
+			scadapter=new SimpleCursorAdapter(MainActivity.this,
+					R.layout.daily_list_item, cursor, from, to, 0);
+			
+			ListView listView = (ListView) findViewById(R.id.listview);
+			if(scadapter!=null)
+			   listView.setAdapter(scadapter);
 			// Replace the result Cursor displayed by the Cursor Adapter with
 			// the new result set.
-           /** adapter.swapCursor(cursor);*/
-            
+            //** adapter.swapCursor(cursor);*//*
+           
          // This handler is not synchronized with the UI thread, so you
          // will need to synchronize it before modifying any UI elements
          // directly.
+         
 		}
 
 		@Override
@@ -92,77 +99,64 @@ public class MainActivity extends FragmentActivity {
          // directly.
 		}
 	};
-
+    	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+		/*initDatabase();*/
         
 		//Initializing and Restarting the Cursor Loader
 		LoaderManager loaderManager=getSupportLoaderManager();
 		
 		Bundle args=null;
-		loaderManager.initLoader(1, args, myLoaderCallBacks);	
-		
-		nasaArrayList = new ArrayList<NasaDailyImage>();
-
-		NasaDailyOpenHelper nasaHelper = new NasaDailyOpenHelper(this);
-
-		// Get writable database first,if fails,back to get readable database
-		SQLiteDatabase db = nasaHelper.getWritableDatabase();
-		if (db == null) {
-			db = nasaHelper.getReadableDatabase();
-		}
-
-		/*
-		 * //update DB NasaDailyDAO.Update(db);
-		 */
-
-		Cursor cursor = NasaDailyDAO.Query(db);
-		num = cursor.getCount();
-
-		/**
-		 * cursor from index -1 cursor.moveToFirst();
-		 */
-
-		int columnIndex;
-		while (cursor.moveToNext()) {
-			NasaDailyImage daily = new NasaDailyImage();
-			columnIndex = cursor
-					.getColumnIndexOrThrow(NasaDailyOpenHelper.KEYWORD);
-			key_code = cursor.getInt(columnIndex);
-			columnIndex = cursor
-					.getColumnIndexOrThrow(NasaDailyOpenHelper.TITLE);
-			title = cursor.getString(columnIndex);
-			columnIndex = cursor
-					.getColumnIndexOrThrow(NasaDailyOpenHelper.DATE);
-			date = cursor.getString(columnIndex);
-			columnIndex = cursor
-					.getColumnIndexOrThrow(NasaDailyOpenHelper.IMAGE);
-			image = cursor.getString(columnIndex);
-			columnIndex = cursor
-					.getColumnIndexOrThrow(NasaDailyOpenHelper.DESCRIPTION);
-			description = cursor.getString(columnIndex);
-			daily.setKey_code(key_code);
-			daily.setTitle(title);
-			daily.setDate(date);
-			daily.setImage(image);
-			daily.setDescription(description);
-			nasaArrayList.add(daily);
-		}
-
-		ListView listView = (ListView) findViewById(R.id.listview);
-		listView.setAdapter(new DailyImageAdapter());
-		/**
-		 * inite database NasaDailyDAO.initDatabase(db); db.close();
-		 * Toast.makeText(this, "db init complete", Toast.LENGTH_SHORT).show();
-		 */
+		loaderManager.initLoader(0, args, myLoaderCallBacks);	
+	    	
+	}
+	
+	@Override
+	protected void onResume(){
+		super.onResume();
+		getSupportLoaderManager().restartLoader(0, null, myLoaderCallBacks);
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
+		return true;
+	}
+	
+	public boolean initDatabase(){
+		//Get the Content Resolver
+		ContentResolver cr = getContentResolver();
+		
+		ContentValues newValues=new ContentValues();
+		newValues.put(NasaDailyOpenHelper.TITLE, "美国夫妻散步挖出千枚金币 价值千万美元(图)");
+		newValues.put(NasaDailyOpenHelper.DATE, "2014年02月26日13:58");
+		newValues.put(NasaDailyOpenHelper.DESCRIPTION, "据美国侨报网26日报道，近日，一对加州夫妻雇来钱币专家唐·卡根(Don Kagan)鉴别一些金币。这些金币有上千枚，是这对夫妇在经常散步的小路旁挖出的，价值1000万美元。" +
+				"唐·卡根不但是钱币专家，还是一名美国西部的经销商和拍卖商。卡根说，从1981年开始，就一直有人带着一两枚金币来找钱币专家，这些金币都价值几千美元。但是，这是第一次有人发现整整几罐金币。“这是百万分之一的机会，比中彩票几率都小，”他说。" +
+				"这对夫妻的房产位于加州北部的蒂伯龙市(Tibron， CA)，去年春天，他们就找到这些金币，并与卡根讨论此事，但一直以来，他们并不愿意透露自己的姓名。" +
+				"　这对幸运的夫妻表示，自己从来没有想过会发现这样的东西，但奇怪的是，这件事发生后，他们又觉得好像自己一生都在等待这一刻。" +
+				"这对夫妻非常熟悉埋有金币的小路，很多年来，他们几乎每天都在这条小路上散步。在散步时，他们无意间发现一个老旧金属罐子的边缘露出地面。“然后，我弯下腰，刮去上面的苔藓，就发现了整个罐口，”这对夫妻说。" +
+				"　这是这对夫妻发现的第一个装满金币的金属罐子，他们一共挖到5个这样的罐子。卡根说，他们一共发现大约1427枚未进入流通的崭新金币，金币上的日期是1847年至1894年。" +
+				"25日，卡根透露，这对夫妻计划卖掉大部分金币。不过在卖掉之前，这对夫妻将把这些金币存放在美国铅笔协会(American Numismatic Association)，用于27日在亚特兰大举行的钱币展览。");
+		
+		// Insert the row into your table
+    	Uri myRowUri=cr.insert(MyContentProvider.CONTENT_URI, newValues);
+    	
+    	Log.w(TAG, "image uri: "+myRowUri);
+    	try{
+    		// Open an output stream using the new row’s URI.
+    		OutputStream outStream = cr.openOutputStream(myRowUri);
+    		// Compress your bitmap and save it into your provider.
+    		Bitmap image=BitmapFactory.decodeResource(getResources(), R.drawable.scene);
+    		image.compress(Bitmap.CompressFormat.JPEG, 80, outStream);
+    	}catch(FileNotFoundException e){
+    		Log.d(TAG, "No file found for this record.");
+    	}
+		
 		return true;
 	}
 	
@@ -275,104 +269,47 @@ public class MainActivity extends FragmentActivity {
     	return cr.update(rowURI, updateValues, where, whereArgs);
     }
     
-	class DailyImageAdapter implements ListAdapter {
-
-		public DailyImageAdapter() {
-		}
-
-		@Override
-		public int getCount() {
-			// TODO Auto-generated method stub
-			return num;
-		}
-
-		@Override
-		public Object getItem(int position) {
-			// TODO Auto-generated method stub
-			return nasaArrayList.get(position);
-		}
-
-		@Override
-		public long getItemId(int position) {
-			// TODO Auto-generated method stub
-			return position;
-		}
-
-		@Override
-		public int getItemViewType(int position) {
-			// TODO Auto-generated method stub
-			return 0;
-		}
-
-		@Override
-		public View getView(int position, View convertView, ViewGroup parent) {
-			/**
-			 * how to reuse convertView ?????
-			 */
-			View view = View.inflate(MainActivity.this,
-					R.layout.daily_list_item, null);
-
-			TextView dailyTitle = (TextView) view
-					.findViewById(R.id.daily_title);
-			dailyTitle.setText(nasaArrayList.get(position).getTitle());
-			TextView dailyDate = (TextView) view.findViewById(R.id.daily_date);
-			dailyDate.setText(nasaArrayList.get(position).getDate());
-			ImageView dailyImage = (ImageView) view
-					.findViewById(R.id.daily_image);
-
-			Bitmap bitmap = BitmapFactory.decodeFile(nasaArrayList
-					.get(position).getImage());
-			dailyImage.setImageBitmap(bitmap);
-
-			TextView dailyDescription = (TextView) view
-					.findViewById(R.id.daily_description);
-			dailyDescription.setText(nasaArrayList.get(position)
-					.getDescription());
-			return view;
-
-		}
-
-		@Override
-		public int getViewTypeCount() {
-			// TODO Auto-generated method stub
-			return 1;
-		}
-
-		@Override
-		public boolean hasStableIds() {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public boolean isEmpty() {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public void registerDataSetObserver(DataSetObserver observer) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		public void unregisterDataSetObserver(DataSetObserver observer) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		public boolean areAllItemsEnabled() {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-		@Override
-		public boolean isEnabled(int position) {
-			// TODO Auto-generated method stub
-			return false;
-		}
-
-	}
+    //Reading and writing fi les from and to a Content Provider
+    public void addNasaDailyWithImage(String title,String date,Bitmap image,String description ){
+    	// Create a new row of values to insert
+    	ContentValues values=new ContentValues();
+    	
+    	// Assign values for each row.
+    	values.put(NasaDailyOpenHelper.TITLE, title);
+    	values.put(NasaDailyOpenHelper.DATE, date);
+    	values.put(NasaDailyOpenHelper.DESCRIPTION, description);
+    	
+    	// Get the Content Resolver
+    	ContentResolver cr = getContentResolver();
+    	
+    	// Insert the row into your table
+    	Uri myRowUri=cr.insert(MyContentProvider.CONTENT_URI, values);
+    	
+    	try{
+    		// Open an output stream using the new row’s URI.
+    		OutputStream outStream = cr.openOutputStream(myRowUri);
+    		// Compress your bitmap and save it into your provider.
+    		image.compress(Bitmap.CompressFormat.JPEG, 80, outStream);
+    	}catch(FileNotFoundException e){
+    		Log.d(TAG, "No file found for this record.");
+    	}
+    }
+    
+    public Bitmap getImage(long rowID){
+    	Uri myRowUri=ContentUris.withAppendedId(MyContentProvider.CONTENT_URI, rowID);
+    	
+    	try{
+    		// Open an input stream using the new row’s URI.
+    		InputStream inputStream = getContentResolver().openInputStream(myRowUri);
+    		
+    		// Make a copy of the Bitmap.
+    		Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+    		return bitmap;
+    	}catch(FileNotFoundException e){
+    		Log.d(TAG, "No file found for this record.");
+    	}
+    	
+    	return null;
+    }
+    
 }

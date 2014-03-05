@@ -1,0 +1,152 @@
+  public Bitmap getImage(long rowID){
+    	Uri myRowUri=ContentUris.withAppendedId(MyContentProvider.CONTENT_URI, rowID);
+    	
+    	try{
+    		// Open an input stream using the new row¡¯s URI.
+    		InputStream inputStream = getContentResolver().openInputStream(myRowUri);
+    		
+    		// Make a copy of the Bitmap.
+    		Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+    		return bitmap;
+    	}catch(FileNotFoundException e){
+    		Log.d(TAG, "No file found for this record.");
+    	}
+    	
+    	return null;
+    }
+    
+ //Reading and writing fi les from and to a Content Provider
+    public void addNasaDailyWithImage(String title,String date,Bitmap image,String description ){
+    	// Create a new row of values to insert
+    	ContentValues values=new ContentValues();
+    	
+    	// Assign values for each row.
+    	values.put(NasaDailyOpenHelper.TITLE, title);
+    	values.put(NasaDailyOpenHelper.DATE, date);
+    	values.put(NasaDailyOpenHelper.DESCRIPTION, description);
+    	
+    	// Get the Content Resolver
+    	ContentResolver cr = getContentResolver();
+    	
+    	// Insert the row into your table
+    	Uri myRowUri=cr.insert(MyContentProvider.CONTENT_URI, values);
+    	
+    	try{
+    		// Open an output stream using the new row¡¯s URI.
+    		OutputStream outStream = cr.openOutputStream(myRowUri);
+    		// Compress your bitmap and save it into your provider.
+    		image.compress(Bitmap.CompressFormat.JPEG, 80, outStream);
+    	}catch(FileNotFoundException e){
+    		Log.d(TAG, "No file found for this record.");
+    	}
+    }
+    
+    //return update rows number
+    public int update(int rowID,String title,String date,String image,String description){
+    	// Create the updated row content, assigning values for each row.
+    	ContentValues updateValues=new ContentValues();
+    	if(title!=null&&title!="")
+    	  updateValues.put(NasaDailyOpenHelper.TITLE, title);
+    	if(date!=null&&title!="")
+    	  updateValues.put(NasaDailyOpenHelper.DATE, date);
+    	if(image!=null&&image!="")
+    	  updateValues.put(NasaDailyOpenHelper.IMAGE, image);
+    	if(description!=null&&description!="")
+    	  updateValues.put(NasaDailyOpenHelper.DESCRIPTION, description);
+    	
+    	// Create a URI addressing a specific row.
+    	Uri rowURI=ContentUris.withAppendedId(MyContentProvider.CONTENT_URI, rowID);
+    	
+    	// Specify a specific row so no selection clause is required.
+    	String where=null;
+    	String[] whereArgs=null;
+    	
+    	// Get the Content Resolver.
+    	ContentResolver cr = getContentResolver();
+    	
+    	// Update the specified row.
+    	return cr.update(rowURI, updateValues, where, whereArgs);
+    }
+    
+    //return delete row numbers
+    public int delete(int rowID){
+    	// Specify a where clause that determines which row(s) to delete.
+    	// Specify where arguments as necessary.
+    	String where=NasaDailyOpenHelper.KEYWORD+"="+rowID;
+    	
+    	String[] whereArgs=null;
+    	
+    	// Get the Content Resolver.
+    	ContentResolver cr = getContentResolver();
+    	
+    	// Delete the matching rows
+    	return cr.delete(MyContentProvider.CONTENT_URI, where, whereArgs);
+    }
+    
+    public Uri insert(String title,String date,String image,String description){
+    	// Create a new row of values to insert.
+    	/**
+    	 * bulkInsert  takes an array
+    	 */
+    	ContentValues values = new ContentValues();
+    	
+    	// Assign values for each row.
+    	values.put(NasaDailyOpenHelper.TITLE, title);
+    	values.put(NasaDailyOpenHelper.DATE, date);
+    	/** image can be null*/
+    	values.put(NasaDailyOpenHelper.IMAGE, image);
+    	values.put(NasaDailyOpenHelper.DESCRIPTION, description);
+    	
+    	// Get the Content Resolver
+    	ContentResolver cr = getContentResolver();
+    	
+    	// Insert the row into your table
+    	return cr.insert(MyContentProvider.CONTENT_URI, values);
+    }
+    
+    
+    public Cursor queryAllRows(){
+		// Get the Content Resolver.
+		ContentResolver cr = getContentResolver();
+		
+		// Specify the result column projection. Return the minimum set
+		// of columns required to satisfy your requirements.
+		String[] result_columns=new String[]{
+				NasaDailyOpenHelper.KEYWORD,NasaDailyOpenHelper.TITLE,
+				NasaDailyOpenHelper.DATE,NasaDailyOpenHelper.IMAGE,
+				NasaDailyOpenHelper.DESCRIPTION};
+		
+		// Specify the where clause that will limit your results.
+		String where = null;
+		
+		// Replace these with valid SQL statements as necessary.
+		String[] whereArgs=null;
+		String order = null;
+		
+		// Return the specified rows.
+		return cr.query(MyContentProvider.CONTENT_URI, result_columns,
+				where, whereArgs, order);
+	}
+	
+	public Cursor query(int rowID){
+		// Get the Content Resolver.
+		ContentResolver cr=getContentResolver();
+		
+		// Specify the result column projection. Return the minimum set
+		// of columns required to satisfy your requirements.
+		String[] result_columns=new String[]{
+				NasaDailyOpenHelper.KEYWORD,NasaDailyOpenHelper.TITLE,
+				NasaDailyOpenHelper.DATE,NasaDailyOpenHelper.IMAGE,
+				NasaDailyOpenHelper.DESCRIPTION};
+		
+		// Append a row ID to the URI to address a specific row.
+		Uri rowAddress=ContentUris.withAppendedId(MyContentProvider.CONTENT_URI, rowID);
+		
+		// These are null as we are requesting a single row.
+		String where = null;
+		String[] whereArgs=null;
+		String order=null;
+		
+		// Return the specified rows.
+		return cr.query(rowAddress, result_columns, where, whereArgs, order);
+	}

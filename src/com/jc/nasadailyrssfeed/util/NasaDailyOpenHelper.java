@@ -24,7 +24,7 @@ import android.util.Log;
 	
 	private static final String TABLE_CREATE_1="create table "+TABLE_NAME_1
 			+"( "+KEYWORD+" integer primary key autoincrement, "
-			     +TITLE+" varchar(255) not null, "
+			     +TITLE+" varchar(255) not null unique, "
 			     +DATE +" datatime not null, "
 			     +IMAGE+" string, "
 			     +DESCRIPTION+" text not null, "

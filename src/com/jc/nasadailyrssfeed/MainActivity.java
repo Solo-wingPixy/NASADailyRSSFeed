@@ -29,6 +29,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -41,23 +42,31 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.util.LruCache;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.ListView;
 import android.widget.Toast;
 
-public class MainActivity extends FragmentActivity {
+public class MainActivity extends FragmentActivity{
 
 	// Log tag
 	private static final String TAG = "mytag";
 
 	private String url = "http://www.nasa.gov/rss/dyn/image_of_the_day.rss";
-	private ProgressDialog progressDialog = null;
+
+	private File fileDir = null;
+
+	private static LruCache<String, Bitmap> mMemoryCache;
+    
+	private ListView listView;
 	
-    private  File fileDir = null;
+	private ProgressDialog progressDialog;
+	
+	private MyCursorAdapter cursorAdapter;
 	
 	// Querying for Content Asynchronously Using the Cursor Loader
-	private LoaderManager.LoaderCallbacks<Cursor> myLoaderCallBacks = new LoaderManager.LoaderCallbacks<Cursor>() {
+	LoaderManager.LoaderCallbacks<Cursor> myLoaderCallBacks = new LoaderManager.LoaderCallbacks<Cursor>() {
 
 		@Override
 		public Loader<Cursor> onCreateLoader(int id, Bundle args) {
@@ -83,19 +92,18 @@ public class MainActivity extends FragmentActivity {
 		@Override
 		public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
 
-			MyCursorAdapter cursorAdapter = new MyCursorAdapter(
+			 cursorAdapter = new MyCursorAdapter(
 					MainActivity.this, cursor, 0);
 
-			ListView listView = (ListView) findViewById(R.id.listview);
-			if (cursorAdapter != null)
-				listView.setAdapter(cursorAdapter);
-
-			if (progressDialog != null)
-				progressDialog.dismiss();
 			// Replace the result Cursor displayed by the Cursor Adapter with
 			// the new result set.
-			// ** adapter.swapCursor(cursor);*//*
+			cursorAdapter.swapCursor(cursor);
 
+			if (cursorAdapter != null)
+				listView.setAdapter(cursorAdapter);
+            
+			if(progressDialog.isShowing())
+				progressDialog.dismiss();
 			// This handler is not synchronized with the UI thread, so you
 			// will need to synchronize it before modifying any UI elements
 			// directly.
@@ -113,15 +121,12 @@ public class MainActivity extends FragmentActivity {
 		}
 	};
 
-	private  Handler handler = new Handler() {
+	private Handler handler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			super.handleMessage(msg);
 			// Initializing and Restarting the Cursor Loader
-			LoaderManager loaderManager = getSupportLoaderManager();
-
-			Bundle args = null;
-			loaderManager.initLoader(0, args, myLoaderCallBacks);
+			startLoader(0, null, myLoaderCallBacks);
 		}
 	};
 
@@ -129,12 +134,7 @@ public class MainActivity extends FragmentActivity {
 		@Override
 		public void run() {
 			updateDatabase(parseRSS());
-
-			Message msg = new Message();
-			Bundle data = new Bundle();
-			data.putString("value", "初始化数据库");
-			msg.setData(data);
-			handler.sendMessage(msg);
+			handler.sendMessage(null);
 		}
 	};
 
@@ -142,24 +142,66 @@ public class MainActivity extends FragmentActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-         
-		fileDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+
+		fileDir = Environment
+				.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+
+		// Get max available VM memory, exceeding this amount will throw an
+		// OutOfMemory exception. Stored in kilobytes as LruCache takes an
+		// int in its constructor.
+		final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+
+		// Use 1/8th of the available memory for this memory cache.
+		final int cacheSize = maxMemory / 8;
+
+		RetainFragment retainFragment = RetainFragment
+				.findOrCreateRetainFragment(getSupportFragmentManager());
+
+		mMemoryCache = retainFragment.mRetainedCache;
+		if (mMemoryCache == null) {
+			mMemoryCache = new LruCache<String, Bitmap>(cacheSize) {
+
+				@SuppressLint("NewApi")
+				@Override
+				protected int sizeOf(String key, Bitmap bitmap) {
+					// The cache size will be measured in kilobytes rather than
+					// number of items.
+					return bitmap.getByteCount() / 1024;
+				}
+			};
+
+			retainFragment.mRetainedCache = mMemoryCache;
+		}
+
+		listView = (ListView) findViewById(R.id.listview);
+
 		// review the network state
 		if (networkState()) {
-			
-			//if there are new contents appear
-			
+
+			// if there are new contents appear
 			new Thread(runnable).start();
 		} else {
 			// network is unavailable,just get contents from the database;
-
-			// Initializing and Restarting the Cursor Loader
-			LoaderManager loaderManager = getSupportLoaderManager();
-
-			Bundle args = null;
-			loaderManager.initLoader(0, args, myLoaderCallBacks);
+			startLoader(0, null, myLoaderCallBacks);
 		}
 
+	}
+
+	public static void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+		if (getBitmapFromMemoryCache(key) == null)
+			mMemoryCache.put(key, bitmap);
+	}
+
+	public static Bitmap getBitmapFromMemoryCache(String key) {
+		return mMemoryCache.get(key);
+	}
+
+	public void startLoader(int flag, Bundle args,
+			LoaderManager.LoaderCallbacks<Cursor> loaderCallbacks) {
+
+		LoaderManager loaderManager = getSupportLoaderManager();
+		Loader<Cursor> loader= loaderManager.initLoader(flag, args, loaderCallbacks);
+		loader.forceLoad();
 	}
 
 	public boolean networkState() {
@@ -169,13 +211,13 @@ public class MainActivity extends FragmentActivity {
 
 		if (info != null && info.isConnected()) {
 			Toast.makeText(this, "网络连接正常", Toast.LENGTH_SHORT).show();
-			progressDialog = ProgressDialog
-					.show(this, "请稍后", "正在获取数据...", true);
+			progressDialog = ProgressDialog.show(this, "请稍后", 
+					"正在加载数据。。。", true);
 			return true;
 		} else {
 			Toast.makeText(this, "网络不可用", Toast.LENGTH_LONG).show();
-			progressDialog = ProgressDialog
-					.show(this, "请稍后", "正在获取本地数据...", true);
+			progressDialog = ProgressDialog.show(this, "请稍后", 
+					"正在加载本地数据。。。", true);
 			return false;
 		}
 	}
@@ -235,14 +277,14 @@ public class MainActivity extends FragmentActivity {
 		for (int i = 0; i < num; i++) {
 			NasaDailyImage image = list.get(i);
 			ContentValues newValues = new ContentValues();
-			
-			File file=new File(fileDir, "bitmap"+i+".jpg");
-			String imageUri=file.getAbsolutePath();
+
+			File file = new File(fileDir, "bitmap" + i + ".jpg");
+			String imageUri = file.getAbsolutePath();
 			try {
-				InputStream input=new URL(image.getImage()).openStream();
+				InputStream input = new URL(image.getImage()).openStream();
 				Bitmap bitmap = BitmapFactory.decodeStream(input);
-				
-				FileOutputStream output=new FileOutputStream(file);
+
+				FileOutputStream output = new FileOutputStream(file);
 				bitmap.compress(CompressFormat.JPEG, 100, output);
 			} catch (MalformedURLException e) {
 				// TODO Auto-generated catch block
@@ -251,7 +293,7 @@ public class MainActivity extends FragmentActivity {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 			newValues.put(NasaDailyOpenHelper.TITLE, image.getTitle());
 			newValues.put(NasaDailyOpenHelper.DATE, image.getDate());
 			newValues.put(NasaDailyOpenHelper.IMAGE, imageUri);
@@ -261,10 +303,8 @@ public class MainActivity extends FragmentActivity {
 			// Insert the row into your table
 			cr.insert(MyContentProvider.CONTENT_URI, newValues);
 		}
-      
+
 		return true;
 	}
-	
-	
 
 }

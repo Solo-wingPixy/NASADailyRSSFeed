@@ -1,6 +1,7 @@
 package com.jc.nasadailyrssfeed.util;
 
 
+import com.jc.nasadailyrssfeed.MainActivity;
 import com.jc.nasadailyrssfeed.R;
 
 import android.content.Context;
@@ -40,10 +41,17 @@ public class MyCursorAdapter extends CursorAdapter{
 		viewHolder.title.setText(title);
 		viewHolder.date.setText(date);
 		
-		Bitmap bitmap = MyBitmapHelper.decodeSampleBitmap(imageUri, 100, 100);
-		
-		viewHolder.image.setImageBitmap(bitmap);
-		
+		String split= imageUri.substring(imageUri.indexOf("bitmap"));
+		Bitmap bitmap = MainActivity.getBitmapFromMemoryCache(split);
+		if(bitmap!=null){
+			viewHolder.image.setImageBitmap(bitmap);
+		}else{
+			bitmap = MyBitmapHelper.decodeSampleBitmap(imageUri, 100, 100);
+			
+			MainActivity.addBitmapToMemoryCache(split, bitmap);
+			viewHolder.image.setImageBitmap(bitmap);
+		}
+		 		
 		viewHolder.description.setText(description);
 	}
 

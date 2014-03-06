@@ -12,10 +12,9 @@
     <ListView
         android:id="@+id/listview"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
-    
-       <!-- 分隔符 不起作用 -->
-       <!--  android:divider="@drawable/list_divider"-->
-       <!--  android:dividerHeight="2dp" -->
+        android:layout_height="wrap_content"
+        android:divider="#8EC31E"
+        android:dividerHeight="4dp"/>
+        
         
 </LinearLayout>

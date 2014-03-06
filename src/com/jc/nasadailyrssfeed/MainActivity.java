@@ -25,10 +25,9 @@ import com.jc.nasadailyrssfeed.util.ParserHandler;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Message;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
@@ -43,7 +42,6 @@ import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v4.util.LruCache;
-import android.util.Log;
 import android.view.Menu;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -52,8 +50,6 @@ public class MainActivity extends FragmentActivity{
 
 	// Log tag
 	private static final String TAG = "mytag";
-
-	private String url = "http://www.nasa.gov/rss/dyn/image_of_the_day.rss";
 
 	private File fileDir = null;
 
@@ -95,12 +91,13 @@ public class MainActivity extends FragmentActivity{
 			 cursorAdapter = new MyCursorAdapter(
 					MainActivity.this, cursor, 0);
 
-			// Replace the result Cursor displayed by the Cursor Adapter with
+			/*// Replace the result Cursor displayed by the Cursor Adapter with
 			// the new result set.
-			cursorAdapter.swapCursor(cursor);
+			cursorAdapter.swapCursor(cursor);*/
 
-			if (cursorAdapter != null)
+			if (cursorAdapter != null){
 				listView.setAdapter(cursorAdapter);
+			}     
             
 			if(progressDialog.isShowing())
 				progressDialog.dismiss();
@@ -118,23 +115,6 @@ public class MainActivity extends FragmentActivity{
 			// This handler is not synchronized with the UI thread, so you
 			// will need to synchronize it before modifying any UI elements
 			// directly.
-		}
-	};
-
-	private Handler handler = new Handler() {
-		@Override
-		public void handleMessage(Message msg) {
-			super.handleMessage(msg);
-			// Initializing and Restarting the Cursor Loader
-			startLoader(0, null, myLoaderCallBacks);
-		}
-	};
-
-	Runnable runnable = new Runnable() {
-		@Override
-		public void run() {
-			updateDatabase(parseRSS());
-			handler.sendMessage(null);
 		}
 	};
 
@@ -172,19 +152,17 @@ public class MainActivity extends FragmentActivity{
 
 			retainFragment.mRetainedCache = mMemoryCache;
 		}
-
-		listView = (ListView) findViewById(R.id.listview);
-
+     
 		// review the network state
 		if (networkState()) {
-
 			// if there are new contents appear
-			new Thread(runnable).start();
+			new MyAsyncTask(this,fileDir).execute();
 		} else {
 			// network is unavailable,just get contents from the database;
 			startLoader(0, null, myLoaderCallBacks);
 		}
-
+        
+		listView = (ListView) findViewById(R.id.listview);
 	}
 
 	public static void addBitmapToMemoryCache(String key, Bitmap bitmap) {
@@ -200,8 +178,7 @@ public class MainActivity extends FragmentActivity{
 			LoaderManager.LoaderCallbacks<Cursor> loaderCallbacks) {
 
 		LoaderManager loaderManager = getSupportLoaderManager();
-		Loader<Cursor> loader= loaderManager.initLoader(flag, args, loaderCallbacks);
-		loader.forceLoad();
+		loaderManager.initLoader(flag, args, loaderCallbacks);
 	}
 
 	public boolean networkState() {
@@ -222,36 +199,6 @@ public class MainActivity extends FragmentActivity{
 		}
 	}
 
-	public LinkedList<NasaDailyImage> parseRSS() {
-
-		ParserHandler parserHandler = new ParserHandler();
-
-		try { // configure reader and parser
-			SAXParserFactory factory = SAXParserFactory.newInstance();
-			SAXParser parser = factory.newSAXParser();
-			XMLReader reader = parser.getXMLReader();
-			reader.setContentHandler(parserHandler);
-
-			// make an input stream from the feed URL
-			InputStream inputStream = new URL(url).openStream();
-
-			// start the parsing
-			reader.parse(new InputSource(inputStream));
-			Log.w("saxtag", "ÊÇ·ñ×èÈû");
-			inputStream.close();
-		} catch (IOException e) {
-			Toast.makeText(this, "IO´íÎó£¬¶ÁÈ¡RssÊ§°Ü", Toast.LENGTH_SHORT).show();
-		} catch (ParserConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SAXException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		return parserHandler.getLinkedList();
-	}
-
 	@Override
 	protected void onResume() {
 		super.onResume();
@@ -265,46 +212,101 @@ public class MainActivity extends FragmentActivity{
 		return true;
 	}
 
-	public boolean updateDatabase(LinkedList<NasaDailyImage> list) {
+	class MyAsyncTask extends AsyncTask<Void,Void,Boolean>{
+	    
+		private String url = "http://www.nasa.gov/rss/dyn/image_of_the_day.rss";
+		private Context context;
+		private File fileDir;
+		private LinkedList<NasaDailyImage> linklist;
+		
+		public LinkedList<NasaDailyImage> parseRSS() {
 
-		if (list == null)
-			return false;
+			ParserHandler parserHandler = new ParserHandler();
 
-		// Get the Content Resolver
-		ContentResolver cr = getContentResolver();
+			try { // configure reader and parser
+				SAXParserFactory factory = SAXParserFactory.newInstance();
+				SAXParser parser = factory.newSAXParser();
+				XMLReader reader = parser.getXMLReader();
+				reader.setContentHandler(parserHandler);
 
-		int num = list.size();
-		for (int i = 0; i < num; i++) {
-			NasaDailyImage image = list.get(i);
-			ContentValues newValues = new ContentValues();
+				// make an input stream from the feed URL
+				InputStream inputStream = new URL(url).openStream();
 
-			File file = new File(fileDir, "bitmap" + i + ".jpg");
-			String imageUri = file.getAbsolutePath();
-			try {
-				InputStream input = new URL(image.getImage()).openStream();
-				Bitmap bitmap = BitmapFactory.decodeStream(input);
-
-				FileOutputStream output = new FileOutputStream(file);
-				bitmap.compress(CompressFormat.JPEG, 100, output);
-			} catch (MalformedURLException e) {
+				// start the parsing
+				reader.parse(new InputSource(inputStream));
+				inputStream.close();
+			} catch (IOException e) {
+				Toast.makeText(context, "IO½âÎö´íÎó", Toast.LENGTH_SHORT).show();
+			} catch (ParserConfigurationException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			} catch (IOException e) {
+			} catch (SAXException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
-			newValues.put(NasaDailyOpenHelper.TITLE, image.getTitle());
-			newValues.put(NasaDailyOpenHelper.DATE, image.getDate());
-			newValues.put(NasaDailyOpenHelper.IMAGE, imageUri);
-			newValues.put(NasaDailyOpenHelper.DESCRIPTION,
-					image.getDescription());
+			return parserHandler.getLinkedList();
+		}
+		
+		public boolean updateDatabase(LinkedList<NasaDailyImage> list) {
 
-			// Insert the row into your table
-			cr.insert(MyContentProvider.CONTENT_URI, newValues);
+			if (list == null)
+				return false;
+
+			// Get the Content Resolver
+			ContentResolver cr = context.getContentResolver();
+
+			int num = list.size();
+			for (int i = 0; i < num; i++) {
+				NasaDailyImage image = list.get(i);
+				ContentValues newValues = new ContentValues();
+
+				File file = new File(fileDir, "bitmap" + i + ".jpg");
+				String imageUri = file.getAbsolutePath();
+				try {
+					InputStream input = new URL(image.getImage()).openStream();
+					Bitmap bitmap = BitmapFactory.decodeStream(input);
+
+					FileOutputStream output = new FileOutputStream(file);
+					bitmap.compress(CompressFormat.JPEG, 100, output);
+				} catch (MalformedURLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+				newValues.put(NasaDailyOpenHelper.TITLE, image.getTitle());
+				newValues.put(NasaDailyOpenHelper.DATE, image.getDate());
+				newValues.put(NasaDailyOpenHelper.IMAGE, imageUri);
+				newValues.put(NasaDailyOpenHelper.DESCRIPTION,
+						image.getDescription());
+
+				// Insert the row into your table
+				cr.insert(MyContentProvider.CONTENT_URI, newValues);
+			}
+
+			return true;
+		}
+		
+		public MyAsyncTask(Context context,File fileDir){
+			this.context=context;
+			this.fileDir=fileDir;
+		}
+		
+		@Override
+		protected Boolean doInBackground(Void... params) {
+			// TODO Auto-generated method stub
+			linklist = parseRSS();
+			return updateDatabase(linklist);
 		}
 
-		return true;
+	    @Override
+	    protected void onPostExecute(Boolean bool){
+	    	if(bool)
+	    	   startLoader(0, null, myLoaderCallBacks);
+	    }
 	}
 
 }

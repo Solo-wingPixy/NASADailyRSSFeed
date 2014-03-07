@@ -23,7 +23,7 @@
             android:exported="false"/>
         
         <activity
-            android:name="com.jc.nasadailyrssfeed.MainActivity"
+            android:name="com.jc.nasadailyrssfeed.UIActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

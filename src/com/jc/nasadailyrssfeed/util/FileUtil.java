@@ -3,9 +3,13 @@ package com.jc.nasadailyrssfeed.util;
 import java.io.File;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Environment;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.StyleSpan;
 
 public final class FileUtil {
 
@@ -54,5 +58,25 @@ public final class FileUtil {
 			return true;
 		else
 			return false;
+	}
+	
+	/**
+	 * check if is the time to update nasa daily image
+	 */
+	public static boolean isTimeToUpdate(long timeOfLastUpdate){
+		
+		long currentTime = System.currentTimeMillis();
+		long deltaTime = (currentTime/1000-timeOfLastUpdate)/(60*60);
+		if(deltaTime>24)
+			return true;
+		else
+		    return false;
+	}
+	
+	public static CharSequence toStyleText(CharSequence original,int style){
+		SpannableStringBuilder sbuilder = new SpannableStringBuilder(original);
+		StyleSpan span= new StyleSpan(style);
+		sbuilder.setSpan(span, 0, sbuilder.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+		return sbuilder;		
 	}
 }

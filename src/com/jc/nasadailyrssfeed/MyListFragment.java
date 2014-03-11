@@ -26,6 +26,7 @@ import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -37,34 +38,68 @@ import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
-public class MyListFragment extends Fragment{
+public class MyListFragment extends Fragment implements
+		LoaderManager.LoaderCallbacks<Cursor>,OnItemClickListener{
 
 	private ProgressDialog progressDialog;
 	private Context context;
 
 	private ListView listView;
 	private MyAdapter myAdapter;
+	private MyCursorAdapter cursorAdapter;
 
+	SharedPreferences timeOfUpdatedPreferences;
+	
+    private OnItemSelectedListener itemListener;
+	
+	public interface OnItemSelectedListener{
+		public void onItemSelected(int dataId);
+	}
+	
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
+		itemListener = (OnItemSelectedListener)activity;
 		this.context = activity;
 	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-         		
-		if (FileUtil.isNetworkAvailable(context)) {
-			Toast.makeText(context, "网络连接正常", Toast.LENGTH_SHORT).show();
+
+		timeOfUpdatedPreferences = ((Activity) context)
+				.getPreferences(Context.MODE_PRIVATE);
+		long timeOfLastUpdate = timeOfUpdatedPreferences.getLong(
+				"timeOfLastUpdate", 0L);
+
+		if (FileUtil.isTimeToUpdate(timeOfLastUpdate)) {
+			// time to update
+			if (FileUtil.isNetworkAvailable(context)) {
+				Toast.makeText(context, "网络连接正常", Toast.LENGTH_SHORT).show();
+				progressDialog = ProgressDialog.show(context, "请稍后",
+						"正在加载数据。。。", true);
+				new MyAsyncTask(context).execute();
+			} else {
+				Toast.makeText(context, "网络不可用", Toast.LENGTH_SHORT).show();
+				progressDialog = ProgressDialog.show(context, "请稍后",
+						"正在加载本地数据。。", true);
+				startLoader(0, null, this);
+			}
+
+		} else {
+			// just load local data
+			Toast.makeText(context, "已更新完毕", Toast.LENGTH_SHORT).show();
 			progressDialog = ProgressDialog.show(context, "请稍后", "正在加载数据。。。",
 					true);
-			new MyAsyncTask(context).execute();
+			startLoader(0, null, this);
 		}
+
 	}
 
 	// Called once the Fragment has been created in order for it to
@@ -72,8 +107,9 @@ public class MyListFragment extends Fragment{
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 			Bundle savedInstanceState) {
-		View view = inflater.inflate(R.layout.list_fragmet, container, false);
+		View view = inflater.inflate(R.layout.list_fragment, container, false);
 		listView = (ListView) view.findViewById(R.id.listview);
+		listView.setOnItemClickListener(this);
 		return view;
 	}
 
@@ -101,6 +137,13 @@ public class MyListFragment extends Fragment{
 		super.onResume();
 		// Resume any paused UI updates, threads, or processes required
 		// by the Fragment but suspended when it became inactive.
+	}
+
+	public void startLoader(int flag, Bundle args,
+			LoaderManager.LoaderCallbacks<Cursor> loaderCallbacks) {
+
+		LoaderManager loaderManager = getLoaderManager();
+		loaderManager.initLoader(flag, args, loaderCallbacks);
 	}
 
 	class MyAsyncTask extends AsyncTask<Void, Void, Boolean> {
@@ -160,6 +203,12 @@ public class MyListFragment extends Fragment{
 				// Insert the row into your table
 				cr.insert(MyContentProvider.CONTENT_URI, newValues);
 			}
+			// update the update time
+			SharedPreferences.Editor timeEditor = timeOfUpdatedPreferences
+					.edit();
+			timeEditor.putLong("timeOfLastUpdate",
+					System.currentTimeMillis() / 1000);
+			timeEditor.commit();
 
 			return true;
 		}
@@ -177,15 +226,68 @@ public class MyListFragment extends Fragment{
 
 		@Override
 		protected void onPostExecute(Boolean bool) {
-            if(bool){
-            	myAdapter = new MyAdapter(linklist,context);
-            	listView.setAdapter((ListAdapter) myAdapter);
-            	listView.refreshDrawableState();
-            	
-            	if(progressDialog!=null)
-            		progressDialog.dismiss();
-            }
+			if (bool) {
+				myAdapter = new MyAdapter(linklist, context);
+				listView.setAdapter((ListAdapter) myAdapter);
+
+				if (progressDialog != null)
+					progressDialog.dismiss();
+			}
 		}
+	}
+
+	@Override
+	public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+
+		// Construct the new query in the form of a Cursor Loader. Use the
+		// id
+		// parameter to construct and return different loaders.
+		String[] projection = { NasaDailyOpenHelper.KEYWORD,
+				NasaDailyOpenHelper.TITLE, NasaDailyOpenHelper.DATE,
+				NasaDailyOpenHelper.IMAGE, NasaDailyOpenHelper.DESCRIPTION };
+		String where = null;
+		String[] whereArgs = null;
+		String sortOrder = null;
+
+		// Query URI
+		Uri queryUri = MyContentProvider.CONTENT_URI;
+
+		// Create the new Cursor loader.
+		return new CursorLoader(context, queryUri, projection, where,
+				whereArgs, sortOrder);
+	}
+
+	@Override
+	public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+
+		cursorAdapter = new MyCursorAdapter(context, cursor, 0);
+
+		/*
+		 * // Replace the result Cursor displayed by the Cursor Adapter with //
+		 * the new result set. cursorAdapter.swapCursor(cursor);
+		 */
+
+		if (cursorAdapter != null) {
+			listView.setAdapter(cursorAdapter);
+		}
+
+		if (progressDialog.isShowing())
+			progressDialog.dismiss();
+		// This handler is not synchronized with the UI thread, so you
+		// will need to synchronize it before modifying any UI elements
+		// directly.
+	}
+
+	@Override
+	public void onLoaderReset(Loader<Cursor> loader) {
+		// TODO Auto-generated method stub
+
+	}
+
+	@Override
+	public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+		// TODO Auto-generated method stub
+		itemListener.onItemSelected(position);
 	}
 
 }

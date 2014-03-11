@@ -1,17 +1,16 @@
 package com.jc.nasadailyrssfeed;
 
-import java.io.File;
-
+import com.jc.nasadailyrssfeed.MyListFragment.OnItemSelectedListener;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.util.LruCache;
+import android.util.Log;
 
-public class UIActivity extends FragmentActivity{
+public class UIActivity extends FragmentActivity implements OnItemSelectedListener{
     
 	private String listFragmentTag="listfragment";
 	private String detailFragmentTag="detailfragment";
@@ -60,6 +59,30 @@ public class UIActivity extends FragmentActivity{
 		fmTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
 		fmTransaction.commit();
 	}
+
+	@Override
+	public void onItemSelected(int dataId) {
+		// TODO Auto-generated method stub
+		Bundle bundle = new Bundle();
+		bundle.putInt("dataId", dataId+1);
+		Log.w("nasa", "index id=: "+dataId);
+		
+		MyDetailFragment detailFragment = new MyDetailFragment();
+		detailFragment.setArguments(bundle);
+		
+		FragmentTransaction fmTransaction = fm.beginTransaction();
+		fmTransaction.replace(R.id.ui_container, detailFragment, detailFragmentTag);
+		fmTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+		fmTransaction.addToBackStack(detailFragmentTag);
+		fmTransaction.commit();
+	}
 	
-	
+	public  void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+		if (getBitmapFromMemoryCache(key) == null)
+			mMemoryCache.put(key, bitmap);
+	}
+
+	public  Bitmap getBitmapFromMemoryCache(String key) {
+		return mMemoryCache.get(key);
+	}
 }

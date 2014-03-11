@@ -86,17 +86,13 @@ public class MyListFragment extends Fragment implements
 						"正在加载数据。。。", true);
 				new MyAsyncTask(context).execute();
 			} else {
-				Toast.makeText(context, "网络不可用", Toast.LENGTH_SHORT).show();
-				progressDialog = ProgressDialog.show(context, "请稍后",
-						"正在加载本地数据。。", true);
+				Toast.makeText(context, "网络不可用,加载本地数据", Toast.LENGTH_SHORT).show();
 				startLoader(0, null, this);
 			}
 
 		} else {
 			// just load local data
 			Toast.makeText(context, "已更新完毕", Toast.LENGTH_SHORT).show();
-			progressDialog = ProgressDialog.show(context, "请稍后", "正在加载数据。。。",
-					true);
 			startLoader(0, null, this);
 		}
 
@@ -270,12 +266,6 @@ public class MyListFragment extends Fragment implements
 		if (cursorAdapter != null) {
 			listView.setAdapter(cursorAdapter);
 		}
-
-		if (progressDialog.isShowing())
-			progressDialog.dismiss();
-		// This handler is not synchronized with the UI thread, so you
-		// will need to synchronize it before modifying any UI elements
-		// directly.
 	}
 
 	@Override

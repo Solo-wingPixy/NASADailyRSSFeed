@@ -1,9 +1,7 @@
 package com.jc.nasadailyrssfeed.util;
 
 import java.io.File;
-
 import android.content.Context;
-import android.graphics.Typeface;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Environment;

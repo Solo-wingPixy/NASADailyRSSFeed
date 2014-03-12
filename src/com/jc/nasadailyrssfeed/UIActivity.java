@@ -8,7 +8,6 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.util.LruCache;
-import android.util.Log;
 
 public class UIActivity extends FragmentActivity implements OnItemSelectedListener{
     
@@ -16,7 +15,6 @@ public class UIActivity extends FragmentActivity implements OnItemSelectedListen
 	private String detailFragmentTag="detailfragment";
 	
 	private FragmentManager fm;
-	private FragmentTransaction fmTransaction;
 	
 	private LruCache<String, Bitmap> mMemoryCache;
 	
@@ -54,22 +52,23 @@ public class UIActivity extends FragmentActivity implements OnItemSelectedListen
 		
 		//begin list transaction
 		fm = getSupportFragmentManager();
-		fmTransaction = fm.beginTransaction();
+		FragmentTransaction fmTransaction = fm.beginTransaction();
 		fmTransaction.add(R.id.ui_container, new MyListFragment(), listFragmentTag);
 		fmTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
 		fmTransaction.commit();
+	}
+	
+	@Override 
+	protected void onSaveInstanceState(Bundle savedInstanceState){
+		super.onSaveInstanceState(savedInstanceState);
 	}
 
 	@Override
 	public void onItemSelected(int dataId) {
 		// TODO Auto-generated method stub
-		Bundle bundle = new Bundle();
-		bundle.putInt("dataId", dataId+1);
-		Log.w("nasa", "index id=: "+dataId);
 		
-		MyDetailFragment detailFragment = new MyDetailFragment();
-		detailFragment.setArguments(bundle);
-		
+		MyDetailFragment detailFragment = MyDetailFragment.newInstance(dataId+1);
+			
 		FragmentTransaction fmTransaction = fm.beginTransaction();
 		fmTransaction.replace(R.id.ui_container, detailFragment, detailFragmentTag);
 		fmTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);

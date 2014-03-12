@@ -11,10 +11,8 @@ import com.jc.nasadailyrssfeed.util.FileUtil;
 import com.jc.nasadailyrssfeed.util.MyContentProvider;
 import com.jc.nasadailyrssfeed.util.NasaDailyOpenHelper;
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -36,12 +34,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.TextView.BufferType;
 
-public class MyDetailFragment extends Fragment implements
+ public class MyDetailFragment extends Fragment implements
 		LoaderManager.LoaderCallbacks<Cursor> {
-
-	private int dataId;
-    private Context context;
-    
+   
     private File fileDir = null;
     
     private TextView dailyTitle;
@@ -52,24 +47,42 @@ public class MyDetailFragment extends Fragment implements
     private ContentResolver resolver;
    
     private ProgressBar progressBar;
+    
+    /**
+     * Create a new instance of DetailsFragment, initialized to
+     * show the text at 'index'.
+     */
+    public static MyDetailFragment newInstance(int dex){
+    	MyDetailFragment fm = new MyDetailFragment();
+    	
+    	// Supply index input as an argument.
+    	Bundle args = new Bundle();
+    	args.putInt("index", dex);
+    	fm.setArguments(args);
+    	
+    	return fm;
+    }
+    
+    public int getShownIndex(){
+    	return getArguments().getInt("index");
+    }
+    
 	// Called when the Fragment is attached to its parent Activity.
 	@Override
 	public void onAttach(Activity activity) {
 		super.onAttach(activity);
 		// Get a reference to the parent Activity.
-		this.context = activity;
 	}
 
 	// Called to do the initial creation of the Fragment.
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		// Initialize the Fragment.
-		dataId = this.getArguments().getInt("dataId");
 		
 		fileDir = Environment
 				.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
 		
-		resolver = context.getContentResolver();
+		resolver = getActivity().getContentResolver();
 		
 		startLoader(1, null, this);
 	}
@@ -155,14 +168,14 @@ public class MyDetailFragment extends Fragment implements
 				NasaDailyOpenHelper.TITLE, NasaDailyOpenHelper.DATE,
 				NasaDailyOpenHelper.IMAGE, NasaDailyOpenHelper.DESCRIPTION };
 		
-		String where = NasaDailyOpenHelper.KEYWORD +"="+ dataId;
+		String where = NasaDailyOpenHelper.KEYWORD +"="+ getShownIndex();
 		String[] whereArgs = null;
         String sortOrder = null;
 		// Query URI
 		Uri queryUri = MyContentProvider.CONTENT_URI;
 
 		// Create the new Cursor loader.
-		return new CursorLoader(context, queryUri, projection, where,
+		return new CursorLoader(getActivity(), queryUri, projection, where,
 				whereArgs, sortOrder);
 	}
 	
@@ -203,7 +216,7 @@ public class MyDetailFragment extends Fragment implements
 		@Override
 		protected Bitmap doInBackground(String... params) {
 			
-			File file = new File(fileDir, "bitmap" + dataId + ".jpg");
+			File file = new File(fileDir, "bitmap" + getShownIndex() + ".jpg");
 			
 			if(!file.exists()){
 				try {
@@ -223,7 +236,7 @@ public class MyDetailFragment extends Fragment implements
 				ContentValues values = new ContentValues();
 				values.put(NasaDailyOpenHelper.IMAGE, file.getAbsolutePath());
 				resolver.update(MyContentProvider.CONTENT_URI, values,
-						NasaDailyOpenHelper.KEYWORD+"="+dataId, null);
+						NasaDailyOpenHelper.KEYWORD+"="+getShownIndex(), null);
 				
 				return BitmapFactory.decodeFile(file.getAbsolutePath());
 			}else{

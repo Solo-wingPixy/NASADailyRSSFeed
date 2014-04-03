@@ -4,5 +4,6 @@
     <string name="app_name">NASADailyRSSFeed</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
+    <string name="image_des">image description</string>
 
 </resources>

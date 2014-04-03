@@ -11,10 +11,10 @@ import android.text.style.StyleSpan;
 
 public final class FileUtil {
 
-	// the recommended paths
+	/** the recommended paths
 	private static final String EXT_STORAGE_PATH_PREFIX = "/Android/data";
 	private static final String EXT_STORAGE_FILES_PATH_SUFFIX = "/files/";
-	private static final String EXT_STORAGE_CACHE_PATH_SUFFIX = "/cache/";
+	private static final String EXT_STORAGE_CACHE_PATH_SUFFIX = "/cache/";*/
     
 	public static final File fileDir=Environment.
 			getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);

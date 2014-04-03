@@ -5,9 +5,12 @@
     android:paddingBottom="5dp"
     android:paddingTop="5dp" >
 
-    <LinearLayout android:orientation="vertical"
+    <LinearLayout 
+        android:id="@+id/viewgroup"
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:animateLayoutChanges="true">
         
         <TextView
             android:id="@+id/daily_title"
@@ -30,8 +33,8 @@
             android:id="@+id/daily_image"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:contentDescription="daily image" />
+            android:contentDescription="@string/image_des"
+            android:adjustViewBounds="true"/>
 
         <TextView
             android:id="@+id/daily_description"

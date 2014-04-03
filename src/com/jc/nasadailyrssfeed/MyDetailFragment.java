@@ -47,7 +47,7 @@ import android.widget.TextView.BufferType;
     private ContentResolver resolver;
    
     private ProgressBar progressBar;
-    
+    private ViewGroup viewGroup;
     /**
      * Create a new instance of DetailsFragment, initialized to
      * show the text at 'index'.
@@ -95,12 +95,15 @@ import android.widget.TextView.BufferType;
 
 		// Create, or inflate the Fragment¡¯s UI, and return it.
 		// If this Fragment has no UI then return null.
-		View populateView = inflater.inflate(R.layout.detail_fragment, container, false);
+	    View populateView = inflater.inflate(R.layout.detail_fragment, container, false);
+	    viewGroup = (ViewGroup) populateView.findViewById(R.id.viewgroup);
+	    
 		dailyTitle = (TextView)populateView.findViewById(R.id.daily_title);
 		dailyDate = (TextView)populateView.findViewById(R.id.daily_date);
 		dailyImage = (ImageView)populateView.findViewById(R.id.daily_image);
 		dailyDescription = (TextView)populateView.findViewById(R.id.daily_description);
 		progressBar = (ProgressBar)populateView.findViewById(R.id.image_progressbar);
+		
 		return populateView;
 	}
 
@@ -248,7 +251,7 @@ import android.widget.TextView.BufferType;
 		@Override
 		protected void onPostExecute(Bitmap bitmap){
 			
-			progressBar.setVisibility(View.INVISIBLE);
+		    viewGroup.removeView(progressBar);
 			dailyImage.setVisibility(View.VISIBLE);
 			dailyImage.setImageBitmap(bitmap);		
 		}

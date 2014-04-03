@@ -80,7 +80,7 @@ import android.widget.TextView.BufferType;
 		// Initialize the Fragment.
 		
 		fileDir = Environment
-				.getExternalStorageDirectory();
+				.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
 		
 		resolver = getActivity().getContentResolver();
 		
@@ -227,7 +227,7 @@ import android.widget.TextView.BufferType;
 					Bitmap bitmap = BitmapFactory.decodeStream(input);
 
 					FileOutputStream output = new FileOutputStream(file);
-					bitmap.compress(CompressFormat.JPEG, 100, output);
+					bitmap.compress(CompressFormat.JPEG,100, output);
 				} catch (MalformedURLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

@@ -80,7 +80,7 @@ import android.widget.TextView.BufferType;
 		// Initialize the Fragment.
 		
 		fileDir = Environment
-				.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
+				.getExternalStorageDirectory();
 		
 		resolver = getActivity().getContentResolver();
 		

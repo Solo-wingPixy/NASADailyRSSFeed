@@ -14,10 +14,13 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -37,7 +40,6 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.jc.nasadailyrssfeed.util.FileUtil;
-import com.jc.nasadailyrssfeed.util.MyAdapter;
 import com.jc.nasadailyrssfeed.util.MyContentProvider;
 import com.jc.nasadailyrssfeed.util.MyCursorAdapter;
 import com.jc.nasadailyrssfeed.util.NasaDailyImage;
@@ -48,7 +50,6 @@ public class UIActivity2_0 extends FragmentActivity implements
 		LoaderManager.LoaderCallbacks<Cursor>, OnItemClickListener {
 
 	private ListView nasaDailyList;
-	private MyAdapter mAdapter;
 
 	private SharedPreferences timeOfUpdatedPreferences;
 	private ProgressDialog progressDialog;
@@ -108,7 +109,7 @@ public class UIActivity2_0 extends FragmentActivity implements
 						true);
 				new MyAsyncTask(this).execute();
 			} else {
-				Toast.makeText(this, "网络不可用,加载本地数据", Toast.LENGTH_SHORT).show();
+				//try to load local data
 				startLoader(0, null, this);
 			}
 
@@ -156,10 +157,23 @@ public class UIActivity2_0 extends FragmentActivity implements
 		 * // Replace the result Cursor displayed by the Cursor Adapter with //
 		 * the new result set. cursorAdapter.swapCursor(cursor);
 		 */
+		if (cursorAdapter.getCount()!=0) {
 
-		if (cursorAdapter != null) {
 			nasaDailyList.setAdapter(cursorAdapter);
 			countNum = cursorAdapter.getCount();
+		}else{
+			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setMessage("Sorry,无法获取数据")
+			.setNeutralButton("确定", new OnClickListener(){
+
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					// TODO Auto-generated method stub
+					finish();
+				}
+				
+			}).create().show();
+			
 		}
 	}
 
@@ -250,9 +264,9 @@ public class UIActivity2_0 extends FragmentActivity implements
 		@Override
 		protected void onPostExecute(Boolean bool) {
 			if (bool) {
-				mAdapter = new MyAdapter(linklist, context);
-				nasaDailyList.setAdapter(mAdapter);
-
+				
+				startLoader(0, null, UIActivity2_0.this);
+				
 				if (progressDialog != null)
 					progressDialog.dismiss();
 			}
